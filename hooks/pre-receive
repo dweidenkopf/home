@@ -17,19 +17,19 @@ count=0
 echo "Checking file sizes..."
 while read oldrev newrev refname
 do
+	# echo $oldrev $newrev $refname
 	# skip the size check for tag refs
 	if ! [[ ${refname} =~ ^refs/tags/* ]]
 	then
 		
-		echo $oldrev $newrev $refname
-		rawdiff=$(git diff --raw $oldrev $newrev)
+		rawdiff=$(git diff --raw ${oldrev} ${newrev})
 		while read oldmode newmode oldsha newsha code fname
 		do
 			echo -n "${fname}"
 			newsize=$(git cat-file -s ${newsha%\.\.\.})
 			if (( ${newsize} > ${max} ))
 			then
-				echo " of size ${newsize} is bigger than ${max}"
+				echo " size ${newsize}B > ${max}B"
 				let "count+=1"
 			else
 				echo " ok"
@@ -39,5 +39,5 @@ do
 	
 done
 
-exit $count
+exit ${count}
 
