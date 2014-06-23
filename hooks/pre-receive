@@ -12,7 +12,6 @@
 
 set -e
 
-#set -xomax=1024*102
 let max=1024*1024
 count=0
 echo "Checking file sizes..."
