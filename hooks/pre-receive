@@ -10,25 +10,33 @@
 # see contrib/hooks/ for an sample, or uncomment the next line (on debian)
 #
 
+set -e
+
 #set -xomax=1024*102
-max=100*1024
+let max=1024*1024
 count=0
 echo "Checking file sizes..."
 while read oldrev newrev refname
 do
-	rawdiff=$(git diff --raw $oldrev $newrev)
-	while read oldmode newmode oldsha newsha code fname
-	do
-		echo -n "${fname}"
-		newsize=$(git cat-file -s ${newsha%\.\.\.})
-		if (( ${newsize} > ${max} ))
-		then
-			echo " of size ${newsize} is bigger than ${max}"
-			let "count+=1"
-		else
-			echo " ok"
-		fi
-	done <<< "${rawdiff}"
+	# skip the size check for tag refs
+	if ! [[ ${refname} =~ ^refs/tags/* ]]
+	then
+		
+		echo $oldrev $newrev $refname
+		rawdiff=$(git diff --raw $oldrev $newrev)
+		while read oldmode newmode oldsha newsha code fname
+		do
+			echo -n "${fname}"
+			newsize=$(git cat-file -s ${newsha%\.\.\.})
+			if (( ${newsize} > ${max} ))
+			then
+				echo " of size ${newsize} is bigger than ${max}"
+				let "count+=1"
+			else
+				echo " ok"
+			fi
+		done <<< "${rawdiff}"
+	fi
 	
 done
 
