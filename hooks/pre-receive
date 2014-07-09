@@ -11,39 +11,40 @@
 #
 
 set -e
-
+zero="0000000000000000000000000000000000000000"
 let max=1024*1024
 count=0
 echo "Checking file sizes..."
 while read oldrev newrev refname
 do
-    #echo $oldrev $newrev $refname
-    # skip the size check for tag refs
-    if ! [[ ${refname} =~ ^refs/tags/* ]]
-    then
-
-        rawdiff=$(git diff --raw ${oldrev} ${newrev})
-        while read oldmode newmode oldsha newsha code fname
-        do
-            echo -n "${fname}"
-            newsha=${newsha%\.\.\.}
-            # if new sha is 0, the object is being deleted
-            if [ "${newsha}" != "0000000" ]
-            then
-                newsize=$(git cat-file -s ${newsha})
-                if [ ${newsize} -gt ${max} ]
-                then
-                    echo " size ${newsize}B > ${max}B"
-                    let "count+=1"
-                else
-                    echo " ok"
-                fi
-            else
-                echo " deleted"
-            fi
-        done <<< "${rawdiff}"
-    fi
-
+	echo $oldrev $newrev $refname
+	# skip the size check for tag refs or when either rev is 0s. All 0s means either create or delete
+	if [[ ! ${refname} =~ ^refs/tags/* ]]  && [[ "${oldrev}" != "${zero}" ]] && [[ "${newrev}" != "${zero}" ]]
+	then
+		
+		rawdiff=$(git diff --raw ${oldrev} ${newrev})
+		while read oldmode newmode oldsha newsha code fname
+		do
+			echo -n "${fname}"
+			newsha=${newsha%\.\.\.}
+			# if new sha is 0, the object is being deleted
+			if [ "${newsha}" != "0000000" ] 
+			then
+				newsize=$(git cat-file -s ${newsha})
+				if [ ${newsize} -gt ${max} ]
+				then
+					echo " size ${newsize}B > ${max}B"
+					let "count+=1"
+				else
+					echo " ok"
+				fi
+			else
+				echo " deleted"
+			fi
+		done <<< "${rawdiff}"
+	fi
+	
 done
 
 exit ${count}
+
