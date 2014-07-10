@@ -11,39 +11,51 @@
 #
 
 set -e
-zero="0000000000000000000000000000000000000000"
+
 let max=1024*1024
 count=0
 echo "Checking file sizes..."
 while read oldrev newrev refname
 do
-	echo $oldrev $newrev $refname
-	# skip the size check for tag refs or when either rev is 0s. All 0s means either create or delete
-	if [[ ! ${refname} =~ ^refs/tags/* ]]  && [[ "${oldrev}" != "${zero}" ]] && [[ "${newrev}" != "${zero}" ]]
+#	echo $oldrev $newrev $refname
+    # skip the size check for tag refs
+    if [[ ${refname} =~ ^refs/tags/* ]]
 	then
-		
-		rawdiff=$(git diff --raw ${oldrev} ${newrev})
+		continue
+	fi
+	
+	# find all refs we don't care about and exclude them from diff
+	if [[ ! ${oldrev} =~ ^[0]+$ ]]
+	then
+		excludes=^${oldrev}
+	else
+		excludes=( $(git for-each-ref --format '^%(refname:short)' refs/heads/) )
+	fi
+#	echo "excludes " ${excludes}
+	commits=$(git rev-list $newrev "${excludes[@]}")
+	for commit in ${commits};
+	do
+#		echo "commit " ${commit}
+		# get a list of the file changes in this commit
+		rawdiff=$(git diff-tree --no-commit-id ${commit})
 		while read oldmode newmode oldsha newsha code fname
 		do
-			echo -n "${fname}"
-			newsha=${newsha%\.\.\.}
-			# if new sha is 0, the object is being deleted
-			if [ "${newsha}" != "0000000" ] 
+#			echo "reading " ${oldmode} ${newmode} ${oldsha} ${newsha} ${code} ${fname}
+			# if diff-tree returns anything, new sha is not all 0's, and it is a file (blob)
+			if [[ "${newsha}" != "" ]] && [[ ! ${newsha} =~ ^[0]+$ ]] && [[ $(git cat-file -t ${newsha}) == "blob" ]]
 			then
+				echo -n "${fname} "
 				newsize=$(git cat-file -s ${newsha})
-				if [ ${newsize} -gt ${max} ]
+				if (( ${newsize} > ${max} ))
 				then
 					echo " size ${newsize}B > ${max}B"
 					let "count+=1"
 				else
-					echo " ok"
+					echo "ok"
 				fi
-			else
-				echo " deleted"
 			fi
 		done <<< "${rawdiff}"
-	fi
-	
+	done
 done
 
 exit ${count}
