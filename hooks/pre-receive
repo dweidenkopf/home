@@ -24,6 +24,11 @@ do
 		continue
 	fi
 	
+	if [[ ${newrev} =~ ^[0]+$ ]]
+	then
+		continue
+	fi
+
 	# find all refs we don't care about and exclude them from diff
 	if [[ ! ${oldrev} =~ ^[0]+$ ]]
 	then
